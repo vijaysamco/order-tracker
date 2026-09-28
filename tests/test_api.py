@@ -41,3 +41,12 @@ def test_missing_order(client):
 def test_standard_1002_lookup_is_not_found(client):
     response = client.get("/api/orders/standard-1002")
     assert response.status_code == 404
+
+
+def test_express_order_lookup_calculates_delivery_date_across_month_end(client):
+    response = client.get("/api/orders/express-1002")
+
+    assert response.status_code == 200
+    order = response.json()
+    placed_at = main.datetime.fromisoformat(order["created_at"])
+    assert order["estimated_delivery"] == (placed_at + main.timedelta(days=2)).date().isoformat()

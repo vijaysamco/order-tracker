@@ -18,7 +18,9 @@ Open <http://127.0.0.1:8000>. The API is at `/api/orders`, and the health check 
 
 Docker Compose also starts an OpenTelemetry Collector, Prometheus, Loki, Tempo, and Grafana. The app sends metrics, logs, and traces to the Collector over OTLP gRPC. Grafana is available at <http://127.0.0.1:3000> (default login `admin` / `admin`); change these with `GRAFANA_USER` and `GRAFANA_PASSWORD`. The provisioned **Order Tracker Observability** dashboard shows request counts and HTTP errors. Use Grafana Explore with the Loki and Tempo data sources to inspect lookup logs and traces.
 
-The incident responder is available at <http://127.0.0.1:8001>. It persists each alert and the matching recent Loki logs and Tempo traces under the `incident-response` Docker volume, then invokes GitHub Copilot CLI in programmatic mode. Configure a Copilot CLI token as `COPILOT_GITHUB_TOKEN` in your local `.env` file before starting Compose; do not commit that file. If the assistant is unavailable, the responder still records the incident and returns an explicit unavailable/error status. Test alerts marked `test=true` are only acknowledged and do not request source changes.
+The incident responder is available at <http://127.0.0.1:8001>. Grafana's provisioned `incident-responder` contact point POSTs firing alerts to it. The responder persists each alert and the matching recent Loki logs and Tempo traces under the `incident-response` Docker volume, then invokes GitHub Copilot CLI in programmatic mode. Configure a Copilot CLI token as `COPILOT_GITHUB_TOKEN` in your local `.env` file before starting Compose; do not commit that file. If the assistant is unavailable, the responder still records the incident and returns an explicit unavailable/error status. Test alerts marked `test=true` are only acknowledged and do not request source changes.
+
+The express-order month-end failure reproduction and verification are recorded in `incident-response/incidents/express-1002-regression.json`.
 
 To submit a Grafana-style test notification:
 

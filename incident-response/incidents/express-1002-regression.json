@@ -1,0 +1,27 @@
+{
+  "incident": "express-order-estimated-delivery-500",
+  "observed_at": "2026-09-28T06:31:39.778867Z",
+  "observed_via": "pytest TestClient with OpenTelemetry console exporters; Docker/Grafana were unavailable",
+  "endpoint": "GET /api/orders/express-1002",
+  "http_status": 500,
+  "order_id": "express-1002",
+  "priority": "express",
+  "exception": {
+    "type": "ValueError",
+    "message": "day is out of range for month",
+    "source": "app/main.py:61"
+  },
+  "trace": {
+    "trace_id": "0x5012b3e24da7ac464fe58932577e5bd5",
+    "span_id": "0xc43aed735d9771b1",
+    "span_name": "order.lookup",
+    "status": "ERROR"
+  },
+  "root_cause": "The express delivery estimate used datetime.replace(day=placed_at.day + 2). The seeded express order was placed on August 31, so the requested day 33 is invalid.",
+  "fix": "Add timedelta(days=2) to the order timestamp, which correctly rolls over month boundaries.",
+  "verification": {
+    "regression_test": "test_express_order_lookup_calculates_delivery_date_across_month_end",
+    "http_status_after_fix": 200,
+    "estimated_delivery_after_fix": "2026-09-02"
+  }
+}

@@ -58,7 +58,7 @@ def order_detail(row):
     order = as_dict(row)
     if order["priority"] == "express":
         placed_at = datetime.fromisoformat(order["created_at"])
-        estimated_at = placed_at.replace(day=placed_at.day + 2)
+        estimated_at = placed_at + timedelta(days=2)
         order["estimated_delivery"] = estimated_at.date().isoformat()
     return order
 
@@ -150,12 +150,29 @@ def get_order(order_id: str):
             )
             raise HTTPException(404, "Order not found")
 
+        try:
+            order = order_detail(row)
+        except Exception as exc:
+            span.set_attribute("http.response.status_code", 500)
+            span.set_status(Status(StatusCode.ERROR, str(exc)))
+            lookup_logger.emit(
+                body="Order lookup failed",
+                attributes={
+                    "order.id": order_id,
+                    "http.response.status_code": 500,
+                    "exception.type": type(exc).__name__,
+                    "exception.message": str(exc),
+                },
+                severity_text="ERROR",
+            )
+            raise
+
         span.set_attribute("http.response.status_code", 200)
         lookup_logger.emit(
             body="Order lookup succeeded",
             attributes={"order.id": order_id, "http.response.status_code": 200},
         )
-        return order_detail(row)
+        return order
 
 
 @app.post("/api/orders", status_code=201)
