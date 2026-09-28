@@ -36,3 +36,8 @@ def test_create_and_update_order(client):
 
 def test_missing_order(client):
     assert client.get("/api/orders/missing").status_code == 404
+
+
+def test_standard_1002_lookup_is_not_found(client):
+    response = client.get("/api/orders/standard-1002")
+    assert response.status_code == 404

@@ -14,6 +14,10 @@ docker compose up --build -d --wait
 
 Open <http://127.0.0.1:8000>. The API is at `/api/orders`, and the health check is at `/healthz`. Data is stored in a Docker volume and survives container recreation.
 
+## Observability stack
+
+Docker Compose also starts an OpenTelemetry Collector, Prometheus, Loki, Tempo, and Grafana. The app sends metrics, logs, and traces to the Collector over OTLP gRPC. Grafana is available at <http://127.0.0.1:3000> (default login `admin` / `admin`); change these with `GRAFANA_USER` and `GRAFANA_PASSWORD`. The provisioned **Order Tracker Observability** dashboard shows request counts and HTTP errors. Use Grafana Explore with the Loki and Tempo data sources to inspect lookup logs and traces.
+
 If port 8000 is occupied, set `ORDER_TRACKER_PORT`, for example:
 
 ```bash
