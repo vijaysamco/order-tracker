@@ -79,12 +79,41 @@ services:
       - tempo
     restart: unless-stopped
 
+  incident-response:
+    build:
+      context: ./incident-response
+    ports:
+      - "127.0.0.1:${INCIDENT_RESPONSE_PORT:-8001}:8001"
+    environment:
+      INCIDENT_DATA_DIR: /var/lib/incident-response
+      INCIDENT_WORKSPACE: /workspace
+      LOKI_URL: http://loki:3100
+      TEMPO_URL: http://tempo:3200
+      COPILOT_CLI_COMMAND: copilot
+      COPILOT_TIMEOUT_SECONDS: ${COPILOT_TIMEOUT_SECONDS:-300}
+      COPILOT_GITHUB_TOKEN: ${COPILOT_GITHUB_TOKEN:-}
+    volumes:
+      - .:/workspace
+      - copilot-home:/var/lib/copilot
+      - incident-response:/var/lib/incident-response
+    depends_on:
+      - loki
+      - tempo
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/healthz', timeout=3)"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
 volumes:
   orders:
   prometheus:
   loki:
   tempo:
   grafana:
+  copilot-home:
+  incident-response:
 
 networks:
   default:
