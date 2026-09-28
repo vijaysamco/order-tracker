@@ -1,0 +1,72 @@
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: order-tracker-availability
+    folder: Order Tracker
+    interval: 1m
+    rules:
+      - uid: order-tracker-5xx
+        title: Order Tracker has 5xx responses
+        condition: B
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              datasource:
+                type: prometheus
+                uid: prometheus
+              editorMode: code
+              expr: sum(increase(http_server_request_count_total{http_response_status_code=~"5.."}[5m])) or vector(0)
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: B
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 0
+                    type: gt
+                  operator:
+                    type: and
+                    params: []
+                  query:
+                    params:
+                      - A
+                  reducer:
+                    type: last
+                  type: query
+              datasource:
+                name: Expression
+                type: __expr__
+                uid: __expr__
+              expression: A
+              refId: B
+              type: threshold
+        noDataState: OK
+        execErrState: Error
+        for: 1m
+        annotations:
+          summary: Order Tracker returned a 5xx response
+          description: >-
+            A 5xx response was recorded in the last 5 minutes. Endpoint:
+            GET /api/orders/{order_id}. Time window: 5 minutes. Dashboard:
+            http://localhost:3000/d/order-tracker-observability/order-tracker-observability?orgId=1
+          endpoint: GET /api/orders/{order_id}
+          time_window: 5m
+          dashboard_url: http://localhost:3000/d/order-tracker-observability/order-tracker-observability?orgId=1
+          __dashboardUid__: order-tracker-observability
+          __panelId__: "3"
+        labels:
+          severity: warning
+          service: order-tracker
+        isPaused: false
