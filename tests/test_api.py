@@ -13,6 +13,9 @@ def client(tmp_path, monkeypatch):
 
 def test_health_and_seeded_orders(client):
     assert client.get("/healthz").json() == {"status": "ok"}
+    lookup = client.get("/api/orders/standard-1001")
+    assert lookup.status_code == 200
+    assert lookup.json()["id"] == "standard-1001"
     orders = client.get("/api/orders").json()
     assert len(orders) == 3
     assert {order["priority"] for order in orders} == {"standard", "express"}

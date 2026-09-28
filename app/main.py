@@ -7,7 +7,10 @@ from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
+from opentelemetry.trace import Status, StatusCode
 from pydantic import BaseModel, Field
+
+from app.telemetry import export_metrics, lookup_logger, request_counter, tracer
 
 
 DB_PATH = Path(os.getenv("ORDER_DB_PATH", "data/orders.db"))
@@ -79,6 +82,34 @@ async def lifespan(_app: FastAPI):
 app = FastAPI(title="Order Tracker", lifespan=lifespan)
 
 
+@app.middleware("http")
+async def record_request(request, call_next):
+    try:
+        response = await call_next(request)
+    except Exception:
+        route = request.scope.get("route")
+        request_counter.add(
+            1,
+            {
+                "http.route": route.path if route else request.url.path,
+                "http.response.status_code": 500,
+            },
+        )
+        export_metrics()
+        raise
+
+    route = request.scope.get("route")
+    request_counter.add(
+        1,
+        {
+            "http.route": route.path if route else request.url.path,
+            "http.response.status_code": response.status_code,
+        },
+    )
+    export_metrics()
+    return response
+
+
 @app.get("/")
 def index():
     return FileResponse(Path(__file__).parent.parent / "static" / "index.html")
@@ -100,11 +131,31 @@ def list_orders():
 
 @app.get("/api/orders/{order_id}")
 def get_order(order_id: str):
-    with connect() as db:
-        row = db.execute("SELECT * FROM orders WHERE id = ?", (order_id,)).fetchone()
-    if row is None:
-        raise HTTPException(404, "Order not found")
-    return order_detail(row)
+    with tracer.start_as_current_span("order.lookup") as span:
+        span.set_attribute("order.id", order_id)
+        with connect() as db:
+            row = db.execute(
+                "SELECT * FROM orders WHERE id = ?", (order_id,)
+            ).fetchone()
+        if row is None:
+            span.set_attribute("http.response.status_code", 404)
+            span.set_status(Status(StatusCode.ERROR, "Order not found"))
+            lookup_logger.emit(
+                body="Order lookup failed",
+                attributes={
+                    "order.id": order_id,
+                    "http.response.status_code": 404,
+                },
+                severity_text="WARN",
+            )
+            raise HTTPException(404, "Order not found")
+
+        span.set_attribute("http.response.status_code", 200)
+        lookup_logger.emit(
+            body="Order lookup succeeded",
+            attributes={"order.id": order_id, "http.response.status_code": 200},
+        )
+        return order_detail(row)
 
 
 @app.post("/api/orders", status_code=201)
